@@ -1,0 +1,491 @@
+TITLE MASM Template	
+				
+INCLUDE Irvine32.inc
+
+draw_maze	PROTO , m:PTR BYTE,	w:DWORD, h:DWORD
+walk_maze	PROTO,	w:DWORD, h:DWORD, m:PTR BYTE,
+			sx:DWORD, sy:DWORD, ex:DWORD, ey:DWORD
+.data
+strr     BYTE    "not find",0
+
+mazeX	DWORD	16
+mazeY	DWORD	16
+startX	DWORD	1
+startY	DWORD	1
+endX	DWORD	14
+endY	DWORD	14
+mdef		BYTE	"****************"
+	BYTE	"*..............*"
+	BYTE	"*..............*"
+	BYTE	"*..............*"
+	BYTE	"*******....*****"
+	BYTE	"*........*..*..*"
+	BYTE	"*........*.....*"
+	BYTE	"*...******..*..*"
+	BYTE	"*...........*..*"
+	BYTE	"*...*....*..*..*"
+	BYTE	"*...*...********"
+	BYTE	"*...*..........*"
+	BYTE	"*...*..........*"
+	BYTE	"*.........*....*"
+	BYTE	"*.........*....*"
+	BYTE	"****************"
+	
+	b2	BYTE    "****************"
+		BYTE	"*..............*"
+		BYTE	"*..............*"
+		BYTE	"*..............*"
+		BYTE	"*******........*"
+		BYTE	"*........*.....*"
+		BYTE	"*........*.....*"
+		BYTE	"*...******.....*"
+		BYTE	"*...*..........*"
+		BYTE	"*...*..........*"
+		BYTE	"*...*...********"
+		BYTE	"*...*...*......*"
+		BYTE	"*...*****......*"
+		BYTE	"*.........*....*"
+		BYTE	"*.........*....*"
+		BYTE	"****************"
+	
+	b3	BYTE "****************"
+		BYTE "*...*..........*"
+		BYTE "*...*..........*"
+		BYTE "*...*..........*"
+		BYTE "*****..........*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "*..............*"
+		BYTE "****************"
+marrr DWORD 32*32 dup (0)
+.code
+
+
+main PROC
+	
+	INVOKE draw_maze,  ADDR mdef, mazeX , mazeY 
+	
+	INVOKE walk_maze, mazeX , mazeY , ADDR mdef , startX , startY , endX , endY
+
+	call crlf
+	
+	call crlf
+	call waitMsg
+	
+	exit
+main ENDP
+
+
+
+
+
+draw_maze PROC m:PTR BYTE,	w:DWORD, h:DWORD
+	mov ecx,h 
+	mov esi,m
+	L1: 
+		mov ebx,ecx 
+		mov ecx,w 
+		L2:		
+			mov al,[esi]
+			call writechar
+			inc esi
+		LOOP L2 
+		call crlf
+		mov ecx,ebx
+	LOOP L1
+	ret
+draw_maze ENDP 
+Path STRUCT
+	X DWORD ?
+	Y DWORD ?
+Path ENDS
+.data 
+
+
+	X DWORD 1
+	Y DWORD 1
+	count DWORD 0
+	count2 DWORD 0
+	mark DWORD 32*32 dup (0)
+	countt DWORD 32*32 dup (0)
+	point1 Path 32*32 dup(<0,0>)
+.code
+walk_maze PROC w:DWORD, h:DWORD, m:PTR BYTE,
+			sx:DWORD, sy:DWORD, ex:DWORD, ey:DWORD
+
+	LOCAL dir:DWORD,nextX:DWORD,nextY:DWORD
+	mov eax,sy
+	mul w
+	add eax,sx
+	mov ebx,TYPE countt
+	mul ebx
+	mov mark[eax],1;做記號
+	mov countt[eax],1;路途
+	mov edi,0
+	mov eax,sx
+	mov (Path PTR point1[edi]).X,eax;存x,y
+	mov eax,sy
+	mov (Path PTR point1[edi]).Y,eax
+	
+
+	;call writedec
+	;call waitMsg
+	L1:	;算出路徑
+		mov eax,sx
+		mov X,eax
+		mov eax,sy
+		mov Y,eax
+		right:
+			inc X
+			mov esi,m
+			add esi,X
+			mov eax,Y
+			mul w
+			cmp BYTE PTR[esi + eax],'.'
+			jne down
+			mov eax,Y
+			mul w
+			add eax,X
+			mov ebx,TYPE mark
+			mul ebx
+			cmp mark[eax],0
+			jne down
+			mov mark[eax],1
+			mov eax,X
+			add edi,TYPE Path
+			mov (Path PTR point1[edi]).X,eax
+			mov eax,Y
+			mov (Path PTR point1[edi]).Y,eax
+			mov eax,sy
+			mul w
+			add eax,sx
+			mov ebx,TYPE countt
+			mul ebx
+			mov ecx,countt[eax]
+			inc ecx
+			mov eax,Y
+			mul w
+			add eax,X
+			mov ebx,TYPE countt
+			mul ebx
+			add countt[eax],ecx
+
+		down:
+			dec X
+			inc Y
+			mov esi,m
+			add esi,X
+			mov eax,Y
+			mul w
+			cmp BYTE PTR[esi + eax],'.'
+			jne left
+			mov eax,Y
+			mul w
+			add eax,X
+			mov ebx,TYPE mark
+			mul ebx
+			cmp mark[eax],0
+			jne left
+			mov mark[eax],1
+			mov eax,X
+			add edi,TYPE Path
+			mov (Path PTR point1[edi]).X,eax
+			mov eax,Y
+			mov (Path PTR point1[edi]).Y,eax
+			mov eax,sy
+			mul w
+			add eax,sx
+			mov ebx,TYPE countt
+			mul ebx
+			mov ecx,countt[eax]
+			inc ecx
+			mov eax,Y
+			mul w
+			add eax,X
+			mov ebx,TYPE countt
+			mul ebx
+			add countt[eax],ecx
+		left:
+			dec X
+			dec Y
+			mov esi,m
+			add esi,X
+			mov eax,Y
+			mul w
+			cmp BYTE PTR[esi + eax],'.'
+			jne up
+			mov eax,Y
+			mul w
+			add eax,X
+			mov ebx,TYPE mark
+			mul ebx
+			cmp mark[eax],0
+			jne up
+			mov mark[eax],1
+			mov eax,X
+			add edi,TYPE Path
+			mov (Path PTR point1[edi]).X,eax
+			mov eax,Y
+			mov (Path PTR point1[edi]).Y,eax
+			mov eax,sy
+			mul w
+			add eax,sx
+			mov ebx,TYPE countt
+			mul ebx
+			mov ecx,countt[eax]
+			inc ecx
+			mov eax,Y
+			mul w
+			add eax,X
+			mov ebx,TYPE countt
+			mul ebx
+			add countt[eax],ecx
+		up:
+			inc X
+			dec Y
+			mov esi,m
+			add esi,X
+			mov eax,Y
+			mul w
+			cmp BYTE PTR[esi + eax],'.'
+			jne elsee
+			mov eax,Y
+			mul w
+			add eax,X
+			mov ebx,TYPE mark
+			mul ebx
+			cmp mark[eax],0
+			jne elsee
+			mov mark[eax],1
+			mov eax,X
+			add edi,TYPE Path
+			mov (Path PTR point1[edi]).X,eax
+			mov eax,Y
+			mov (Path PTR point1[edi]).Y,eax
+			mov eax,sy
+			mul w
+			add eax,sx
+			mov ebx,TYPE countt
+			mul ebx
+			mov ecx,countt[eax]
+			inc ecx
+			mov eax,Y
+			mul w
+			add eax,X
+			mov ebx,TYPE countt
+			mul ebx
+			add countt[eax],ecx
+		elsee:
+			mov eax,count2
+			mov ebx,ex
+			cmp (Path PTR point1[eax]).X,ebx
+			je next
+			jne L2
+	L2:	
+			mov ebx,count2
+			cmp ebx,edi
+			ja final2
+			jle next2
+	next:
+		mov eax,count2
+		mov ebx,ey
+		cmp (Path PTR point1[eax]).Y,ebx
+		je firstfinall
+		jmp L2
+	next2:
+		mov ebx,count2
+		mov eax,(Path PTR point1[ebx]).X
+		mov sx,eax
+		mov eax,(Path PTR point1[ebx]).Y
+		mov sy,eax
+		add count2,TYPE Path
+		jmp L1
+	final2:;沒找到
+
+		mov edx,OFFSET strr
+		call writestring
+		ret
+	firstfinall:;找到後
+		mov eax,3
+		mov count,eax
+		mov eax,0
+		mov dir,eax
+		mov nextX,eax
+		mov nextY,eax
+
+		mov ecx,1
+		mov eax,1
+
+		push eax;存x,y
+		push eax
+		push dir
+		L3:;找
+			mov eax,nextX
+			cmp eax,ex
+			je L5
+			mov eax,nextY
+			cmp eax,ey
+			je L16
+			L15:
+
+				pop dir
+				pop sy
+				pop sx
+				dec count
+				dec ecx
+
+			L4:;方向
+				mov eax,sx
+				mov X,eax
+				mov eax,sy
+				mov Y,eax
+
+				mov eax,dir
+				cmp eax,0
+				je L6
+				cmp eax,1
+				je L7
+				cmp eax,2
+				je L8
+				cmp eax,3
+				je L9
+				ja L3
+
+				L6:;右
+					inc X
+					mov eax,Y
+					mov nextY,eax
+					mov eax,X
+					mov nextX,eax
+					jmp L10
+
+				L7:;下
+					inc Y
+					mov eax,X
+					mov nextX,eax
+					mov eax,Y
+					mov nextY,eax
+					jmp L10
+				L8:;左
+					dec X
+					mov eax,Y
+					mov nextY,eax
+					mov eax,X
+					mov nextX,eax
+					jmp L10
+				L9:;上
+					dec Y
+					mov eax,X
+					mov nextX,eax
+					mov eax,Y
+					mov nextY,eax
+					jmp L10
+			
+
+			L10:
+				mov eax,ex
+				cmp eax,nextX
+				je L14
+				
+			L13:;比較路徑
+			mov eax,nextY
+
+			mul w
+			add eax,nextX
+			mov ebx,TYPE countt
+			mul ebx
+			
+			mov edx,countt[eax]
+			
+			
+			cmp edx,count
+			jne L11
+			;是要的路徑
+			inc dir
+			push sx
+			push sy
+			push dir
+			inc count
+			mov eax,nextX
+			mov sx,eax
+			mov eax,nextY
+			mov sy,eax
+			mov eax,0
+			mov dir,eax
+			inc ecx
+			jmp L4
+			
+			L11:
+				inc dir
+				jmp L4
+			L5:
+			 mov eax,nextY
+			 cmp eax,ey
+			 je next3
+			 jne L15
+			L16:
+				mov eax,nextX
+				 cmp eax,ex
+				 je next3
+				 jne L15
+			L12:
+			 mov eax,nextX
+			 cmp eax,ex
+			 je next3
+			 jne L13
+		   L14:
+			 mov eax,nextY
+			 cmp eax,ey
+			 je next3
+			 jne L13
+		next3:
+		push sx
+		push sy
+		inc dir
+		push dir
+		inc ecx
+		push nextX
+		push nextY
+		inc dir
+		push dir
+		inc ecx
+		mov count2,ecx
+		mov edi,0
+		;做處理
+		L17:
+			pop dir
+			pop sy
+			pop sx
+			mov eax,sx
+			mov (Path PTR point1[edi]).X,eax
+			mov eax,sy
+			mov (Path PTR point1[edi]).Y,eax
+			add edi,TYPE Path
+
+		loop L17
+		sub edi,TYPE Path
+		mov ecx,count2
+		
+		L18:;印出來
+			mov count2,ecx
+			mov eax,(Path PTR point1[edi]).Y
+			mul w
+			add eax,(Path PTR point1[edi]).X
+			mov esi,m
+			mov BYTE PTR [esi + eax],'m'
+			sub edi,TYPE Path
+			call Clrscr
+			INVOKE draw_maze,  ADDR mdef, mazeX , mazeY 
+			mov ecx,count2
+		loop L18
+		
+		ret
+walk_maze  ENDP
+END main
