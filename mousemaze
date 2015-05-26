@@ -1,0 +1,460 @@
+INCLUDE Irvine32.inc
+.data
+charah BYTE ?
+charal BYTE ?
+count DWORD ?
+mazesize DWORD 0
+msg_reach_end	BYTE	"You have reached the end position.", 0
+msg_reach_clear BYTE    "                                  ", 0
+;##################################################################
+;更改迷宮規則: (1)每行要一樣數量,不然會不顯示在螢幕上,但是東西還是在。(故意用的,提醒自己) 
+;              (2)大小的話沒試過最大,但應該蠻大的,可動式,有調過。 
+;迷宮移動方式:鍵盤的↑↓←→
+;迷宮以自行更改過圖形,可自行更改起始位置STARTX(X軸)、STARTY(Y軸)和終點位置ENDX、ENDY
+maze	BYTE	"#########################"
+    	BYTE	"#........#########......#"
+		BYTE	"#..........#####........#"
+		BYTE	"#..###........###.......#"
+		BYTE	"#....#######.......###..#"
+		BYTE	"#....#......#########...#"
+		BYTE	"#.......####............#"
+		BYTE	"#....#....##............#"
+		BYTE	"#....###...#........#####"
+		BYTE	"#....#....########......#"
+		BYTE	"#....######..####....####"
+		BYTE	"#...........##..........#"
+		BYTE	"#.....###...###...#######"
+		BYTE	"#.......#...###.........#"
+		BYTE	"#.......#.....####......#"
+		BYTE	"#########################"
+SIZEX = SIZEOF maze
+SIZEY = ($ - maze) / SIZEX
+STARTX = 1
+STARTY = 1
+ENDX = SIZEX - 2
+ENDY = SIZEY - 2
+;##################################################################
+saveX DWORD STARTX
+saveY DWORD STARTY*SIZEX
+posX	DWORD	STARTX
+posY	DWORD	STARTY
+.code
+main	PROC
+	call	Clrscr
+
+	mov	ebx, SIZEX	; draw the maze, SIZEX = 16
+	mov	edx, SIZEY  ; SIZEY = 16
+	mov	esi, OFFSET maze
+	call	draw_maze	; you have to implemented this function
+                        ; draw the end and show message for end
+	mov	ebx, STARTX	; draw the player
+	mov	edx, STARTY
+	call	draw_player	; you have to implemented this function
+
+	mov	posX, STARTX	; start to play
+	mov	posY, STARTY
+	call	play		; you have to implemented this function
+
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+
+	mov	eax, white
+	call	SetTextColor
+	call	WaitMsg
+
+	exit
+main	ENDP
+
+draw_maze PROC
+    mov ecx,SIZEY   
+	L1:
+	mov count,ecx	
+	mov ecx,SIZEX
+	L2:
+	mov esi,mazesize
+    mov al,maze[esi]
+	call WriteChar
+	inc mazesize
+	loop L2
+	mov ecx,count
+	call Crlf
+	loop L1
+	
+	mov esi,(ENDX)+(ENDY)*(SIZEX)
+	mov maze[esi],'E'
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+	ret
+draw_maze ENDP
+
+draw_player PROC
+	mov DH,STARTY
+	mov DL,STARTX
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	ret
+draw_player ENDP
+
+play PROC
+    mov DH,STARTY
+	mov DL,STARTX 
+	rec:
+	call GotoXy
+    call ReadChar
+	mov charah,ah
+	mov charal,al
+	
+	cmp ah,48h
+	je up
+	cmp ah,50h
+	je down
+	cmp ah,4Bh
+	je left
+	cmp ah,4Dh
+	je right
+	jmp quit
+
+	up:
+	mov eax,7+(black*16)
+	call SetTextColor
+	mov al,'.'
+	call WriteChar
+	dec DH
+	sub saveY,SIZEX
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	
+	.if al == '#'
+	inc DH
+	add saveY,SIZEX
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	.if al == 'E'
+	jmp quit2
+	.endif
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	
+	.elseif al == 'E'
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_end
+	call WriteString
+
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+
+	.elseif
+	inc DH
+	add saveY,SIZEX
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	.if al == 'E'
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_clear
+	call WriteString
+
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+
+	.endif
+	dec DH
+	sub saveY,SIZEX
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	.endif
+	jmp quit
+	
+	down:
+	mov eax,7+(black*16)
+	call SetTextColor
+	mov al,'.'
+	call WriteChar
+	inc DH
+	add saveY,SIZEX
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	
+	.if al == '#'
+	dec DH
+	sub saveY,SIZEX
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	.if al == 'E'
+	jmp quit2
+	.endif
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	
+	.elseif al == 'E'
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_end
+	call WriteString
+
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+	
+	.elseif
+	dec DH
+	sub saveY,SIZEX
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	.if al == 'E'
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_clear
+	call WriteString
+
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+
+	.endif
+	inc DH
+	add saveY,SIZEX
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	.endif
+	jmp quit
+	
+	left:
+	mov eax,7+(black*16)
+	call SetTextColor
+	mov al,'.'
+	call WriteChar
+	dec DL
+	sub saveX,1
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	
+	.if al == '#'
+	inc DL
+	add saveX,1
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	.if al == 'E'
+	jmp quit2
+	.endif
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	
+	.elseif al == 'E'
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_end
+	call WriteString
+
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+
+	.elseif
+	inc DL
+	add saveX,1
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	.if al == 'E'
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_clear
+	call WriteString
+
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+
+	.endif
+	dec DL
+	sub saveX,1
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	.endif
+	jmp quit
+	
+	right:
+	mov eax,7+(black*16)
+	call SetTextColor
+	mov al,'.'
+	call WriteChar
+	inc DL
+	add saveX,1
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	
+	.if al == '#'
+	dec DL
+	sub saveX,1
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	.if al == 'E'
+	jmp quit2
+	.endif
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	
+	.elseif al == 'E'
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_end
+	call WriteString
+
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+
+	.elseif
+	dec DL
+	sub saveX,1
+	mov esi,saveX
+	add esi,saveY
+	mov al,maze[esi]
+	.if al == 'E'
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_clear
+	call WriteString
+
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+
+	.endif
+	inc DL
+	add saveX,1
+	call GotoXy
+	mov eax,12+(black*16)
+	call SetTextColor
+	mov al,'*'
+	call WriteChar
+	.endif
+	jmp quit
+	
+	quit2:
+	mov	DH, 24		; show final message
+	mov	DL, 0
+	call	GotoXy
+	mov	eax, white
+	call	SetTextColor
+	mov edx,OFFSET msg_reach_end
+	call WriteString
+
+	mov esi,(ENDX)+(ENDY)*(SIZEX)
+	mov maze[esi],'E'
+	mov DH,ENDY
+	mov DL,ENDX
+	call GotoXy
+	mov eax,10+(black*16)
+	call SetTextColor
+	mov al,'E'
+	call WriteChar
+	jmp rec
+
+	quit:
+    jmp rec
+
+	ret
+play ENDP
+
+END main
