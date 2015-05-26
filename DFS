@@ -1,0 +1,286 @@
+TITLE MASM Template						(main.asm)
+
+; Description:
+; 
+; Revision date:
+
+INCLUDE Irvine32.inc
+.data
+myMessageX BYTE "You find",0dh,0ah,0
+myMessageY BYTE "You can't find",0dh,0ah,0
+find	DWORD	0
+mazeX	DWORD	16
+mazeY	DWORD	16
+startX	DWORD	1
+startY	DWORD	1
+endX	DWORD	14
+endY	DWORD	14
+mdef	BYTE	"****************"
+		BYTE	"*..............*"
+		BYTE	"*..............*"
+		BYTE	"*..............*"
+		BYTE	"*******....*****"
+		BYTE	"*........*..*..*"
+		BYTE	"*........*.....*"
+		BYTE	"*...******..*..*"
+		BYTE	"*...........*..*"
+		BYTE	"*...*....*..*..*"
+		BYTE	"*...*...********"
+		BYTE	"*...*..........*"
+		BYTE	"*...*..........*"
+		BYTE	"*.........*....*"
+		BYTE	"*.........*....*"
+		BYTE	"****************"
+
+
+
+.code
+main PROC
+	call Clrscr
+
+	;push	medf		;m
+	;push	mazeY		;h
+	;push	mazeX		;w
+	call	draw_maze
+
+	call	walk_maze
+
+	cmp		find,1
+	Jne		L2
+	mov		edx,OFFSET myMessageX
+	call	WriteString
+	jmp		L1
+L2:
+	mov		edx,OFFSET myMessageY
+	call	WriteString
+L1:
+	call	waitMsg
+	exit
+main ENDP
+
+draw_maze	PROC
+	call	Clrscr
+
+	mov		al,0
+	mov		ah,0
+	mov		dh,ah
+	mov		dl,al
+
+
+
+	mov		ebx,0
+	mov		ecx,mazeY
+LH:
+	push	ecx
+
+	mov		ecx,mazeX
+	mov		esi,0
+	LW:
+		
+		call	Gotoxy
+
+		mov		al,	mdef[ebx+esi]
+		call	Writechar
+		inc		esi
+		inc		dl
+		Loop	LW
+	pop		ecx
+	add		ebx,16
+	inc		dh
+	mov		dl,0
+
+	Loop	LH
+	ret
+draw_maze ENDP
+
+
+walk_maze	PROC
+
+	mov		ecx,startY
+	mov		ebx,0
+LY:
+	add		ebx,16
+	Loop	LY
+
+	mov		esi,startX
+	mov		al,'m'
+	mov		mdef[ebx+esi],al
+	push	esi
+	push	ebx
+	call	draw_maze
+	pop		ebx
+	pop		esi
+
+;遇到終點
+	
+	mov		esi,startX
+	mov		ebx,startY
+	cmp		esi,endX
+	jne		LCON
+	cmp		ebx,endY
+	jne		LCON
+	mov		eax,1
+	mov		find,eax
+
+
+LCON:
+	
+	;往右走
+	mov		eax,1
+	cmp		eax,find			;已經找到終點就直接跳過
+	je		LEND
+	add		esi,1
+	cmp		esi,mazeX		;比較邊界
+	jg		LNR
+
+	mov		ecx,startY
+	mov		ebx,0
+LXY:
+	add		ebx,16
+	Loop	LXY
+
+	mov		al,'.'
+	cmp		mdef[ebx+esi],al
+	jne		LNR
+	mov		startX,esi
+	call	walk_maze
+
+	cmp		find,1
+	je		LEND
+	mov		esi,startX
+	mov		ecx,startY
+	mov		ebx,0
+LA:
+	add		ebx,16
+	Loop	LA
+	mov		al,'.'
+	mov		mdef[ebx+esi],al
+	call	draw_maze
+	mov		esi,startX
+LNR:	
+	sub		esi,1
+	mov		startX,esi
+
+	;往下走
+	mov		eax,1
+	cmp		eax,find			;已經找到終點就直接跳過
+	je		LEND
+	mov		ebx,1
+	add		startY,ebx
+	mov		ebx,startY
+	cmp		ebx,mazeY		;比較邊界
+	jg		LNB
+
+	mov		ecx,startY
+	mov		ebx,0
+LYY:
+	add		ebx,16
+	Loop	LYY
+	
+	mov		al,'.'
+	cmp		mdef[ebx+esi],al
+	jne		LNB
+	call	walk_maze
+
+	cmp		find,1
+	je		LEND
+	mov		ecx,startY
+	mov		ebx,0
+LB:
+	add		ebx,16
+	Loop	LB
+	mov		al,'.'
+	mov		mdef[ebx+esi],al
+	call	draw_maze
+	mov		esi,startX
+LNB:
+	mov		ebx,1
+	sub		startY,1
+
+	;往左走
+	mov		eax,1
+	cmp		eax,find			;已經找到終點就直接跳過
+	je		LEND
+	sub		esi,1
+	cmp		esi,0				;比較邊界
+	jbe		LNL
+
+	mov		ecx,startY
+	mov		ebx,0
+LYX:
+	add		ebx,16
+	Loop	LYX
+
+	mov		al,'.'
+	cmp		mdef[ebx+esi],al
+	jne		LNL
+	mov		startX,esi
+	call	walk_maze
+
+	cmp		find,1
+	je		LEND
+	mov		ecx,startY
+	mov		ebx,0
+LC:
+	add		ebx,16
+	Loop	LC
+	mov		esi,startX
+	mov		al,'.'
+	mov		mdef[ebx+esi],al
+	call	draw_maze
+	mov		esi,startX
+LNL:
+	add		esi,1
+	mov		startX,esi
+
+	;往上走
+	mov		eax,1
+	cmp		eax,find			;已經找到終點就直接跳過
+	je		LEND
+	mov		ebx,1
+	sub		startY,ebx
+	mov		ebx,startY
+	cmp		ebx,0			;比較邊界
+	jbe		LNT
+
+	mov		ecx,startY
+	mov		ebx,0
+LYYY:
+	add		ebx,16
+	Loop	LYYY
+
+	mov		al,'.'
+	cmp		mdef[ebx+esi],al
+	jne		LNT
+	call	walk_maze
+
+	cmp		find,1
+	je		LEND
+	mov		ecx,startY
+	mov		ebx,0
+LD:
+	add		ebx,16
+	Loop	LD
+	mov		al,'.'
+	mov		mdef[ebx+esi],al
+	call	draw_maze
+	mov		esi,startX
+LNT:
+	mov		ebx,1
+	add		startY,ebx
+
+	mov		esi,startX
+	mov		ebx,startY
+	cmp		esi,endX
+	jne		LEND
+	cmp		ebx,endY
+	jne		LEND
+	mov		eax,1
+	mov		find,eax
+	
+
+LEND:
+	ret
+walk_maze ENDP
+
+END main
